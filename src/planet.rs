@@ -30,19 +30,29 @@ pub struct Planet {
     position: [f64; 2],
     color: [f32; 4],
     size: f64,
+    mass: f64,
 }
 
 impl Planet {
     // makes a new planet that's (theoretically) stable around other at height at a period (% from 0 degrees).
-    fn new_stable_orbit(other: &Box<dyn PhysicsBody>, height: f64, period: f64, size: f64, color: [f32; 4]) -> Self {
-        let oPos = other.position();
+    pub fn new_stable_orbit(other: &Box<dyn Entity>, height: f64, period: f64, mass: f64, size: f64, color: [f32; 4]) -> Box<Self> {
+        let o_pos = other.position();
+        let mu = 6.67430e-11*size;
+        let v = (mu*(2.0 / height - 1.0 / height)).sqrt();
 
-        Planet{
-            velocity: [1.0, 0.0],
-            position: [oPos.position[0] + height, oPos.position[1] + height],
+        Box::new(Planet{
+            velocity: [v, 0.0],
+            position: [o_pos.position[0] + height / 2.0, o_pos.position[1] + height],
             color,
             size,
-        }
+            mass,
+        })
+    }
+}
+
+impl Entity for Planet {
+    fn name(&self) -> &'static str {
+        "planet"
     }
 }
 
@@ -66,7 +76,7 @@ impl PhysicsBody for Planet {
     fn tick(&self, w: &World) -> PhysicsFrame {
         PhysicsFrame {
             velocity: self.velocity,
-            position: self.position,
+            position: [self.position[0] + self.velocity[0], self.position[1] + self.velocity[1]],
         }
     }
 
@@ -86,6 +96,7 @@ impl PhysicsBody for Planet {
 pub struct Star {
     position: [f64; 2],
     color: [f32; 4],
+    mass: f64,
     size: f64,
 }
 
@@ -94,7 +105,8 @@ impl Star {
         Box::new(Star{
             position: [window_size.width / 2.0, window_size.height / 2.0],
             color: [1.0, 0.5, 0.5, 1.0],
-            size: 10.0,
+            mass: 1.989e30,
+            size: 20.0,
         })
     }
 }

@@ -9,6 +9,16 @@ fn main() {
 
     let mut world = World{entities: vec!()};
     world.entities.push(Star::new(window.size()));
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            250.0,
+            0.0,
+            1000.0,
+            10.0,
+            [1.0; 4],
+        )
+    );
 
     while let Some(event) = window.next() {
         // In-order physics state of next frame
@@ -29,9 +39,6 @@ fn main() {
             for e in &world.entities {
                 e.render(&context, graphics);
             }
-
-            // world was moved in, now move it out of the closure
-            // (try removing this)
         });
     }
 }

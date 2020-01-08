@@ -1,5 +1,6 @@
 use piston_window::*;
 use std::time::Duration;
+use nalgebra::Point2;
 
 pub trait Renderable {
     fn render(&self, ctx: &Context, graphics: &mut G2d);
@@ -37,18 +38,18 @@ pub struct Planet {
 }
 
 // const G: f64 = 6.67430e-11;
-const G: f64 = 1.0;
+ const G: f64 = 0.001;
 
 impl Planet {
     // makes a new planet that's (theoretically) stable around other at height at a period (% from 0 degrees).
     pub fn new_stable_orbit(other: &Box<dyn Entity>, height: f64, period: f64, mass: f64, size: f64, color: [f32; 4]) -> Box<Self> {
         let o_pos = other.motion();
-        let mu = G * mass;
-        let v = (mu*(2.0 / height - 1.0 / height)).sqrt();
+        let mu = G * other.mass();
+        let v = (mu / height).sqrt();
 
         Box::new(Planet{
-            velocity: [v, 0.0],
-            position: [o_pos.position[0] + height / 2.0, o_pos.position[1] + height],
+            velocity: [0.0, v],
+            position: [o_pos.position[0] + height, o_pos.position[1] + height / 2.0],
             color,
             size,
             mass,
@@ -69,6 +70,7 @@ fn get_centered_square_extents(center: &[f64; 2], size: f64) -> [f64; 4] {
 impl Renderable for Planet {
     fn render(&self, context: &Context, graphics: &mut G2d) {
         let extents = ellipse::circle(self.position[0], self.position[1], self.size);
+
         rectangle(
             self.color,
             extents,
@@ -84,17 +86,25 @@ impl PhysicsBody for Planet {
 
         for e in &w.entities {
             let o_mass = e.mass();
-            let position = self.motion().position;
-            let o_position = e.motion().position;
-            let dist_sq = (o_position[0] - position[0]).powf(2.0) + (o_position[1] - position[1]).powf(2.0);
-            let force = G * o_mass * self.mass() / dist_sq * d.as_secs_f64();
+            let pos = Point2::from(self.motion().position);
+            let o_pos = Point2::from(e.motion().position);
+            let vec = pos - o_pos;
+            let dist = vec.norm_squared();
 
-            println!("dv: {:?}, pos: {:?}", dv, self.position);
-            // for now, just add this to our x
-            dv[0] += force;
+            let g_mass = - G * o_mass * self.mass();
+
+            let force = g_mass / dist * vec.normalize();
+
+            if force[0].is_finite() {
+                println!("x: {:?}", force);
+                dv[0] += force[0];
+            }
+
+            if force[1].is_finite() {
+                println!("y: {:?}", force);
+                dv[1] += force[1];
+            }
         }
-
-        println!("dv: {:?}, pos: {:?}", dv, self.position);
 
         PhysicsFrame {
             velocity: [self.velocity[0] + dv[0], self.velocity[1] + dv[1]],
@@ -131,7 +141,6 @@ impl Star {
         Box::new(Star{
             position: [window_size.width / 2.0, window_size.height / 2.0],
             color: [1.0, 0.5, 0.5, 1.0],
-            // mass: 1.989e30,
             mass: 1000.0,
             size: 20.0,
         })
@@ -164,6 +173,7 @@ impl PhysicsBody for Star {
 impl Renderable for Star {
     fn render(&self, context: &Context, graphics: &mut G2d) {
         let extents = ellipse::circle(self.position[0], self.position[1], self.size);
+
         rectangle(
             self.color,
             extents,

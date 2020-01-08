@@ -3,7 +3,7 @@ use piston_window::*;
 use planet::{World,PhysicsFrame,Planet,Star};
 use std::time::{Instant,Duration};
 
-const STEP: Duration = Duration::from_millis(1000/30);
+const STEP: Duration = Duration::from_millis(1000/60);
 
 fn main() {
     let mut window: PistonWindow =
@@ -18,16 +18,29 @@ fn main() {
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            50.0,
+            100.0,
             0.0,
+            1.0,
+            5.0,
+            [0.0, 0.0, 1.0, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[1],
             10.0,
-            10.0,
+            0.0,
+            0.01,
+            2.5,
             [1.0; 4],
         )
     );
 
     let mut last = Instant::now();
+
     while let Some(event) = window.next() {
+        std::thread::sleep(STEP);
         let elapsed = last.elapsed();
 
         // In-order physics state of next frame
@@ -43,14 +56,13 @@ fn main() {
             .map(|(e, f)| e.set(f))
             .for_each(drop); // drain to evaluate lazy iter
 
-        last = Instant::now();
-        std::thread::sleep(STEP);
-
         window.draw_2d(&event, |context, graphics, _device| {
             clear([0.1, 0.1, 0.1, 1.0], graphics);
             for e in &world.entities {
                 e.render(&context, graphics);
             }
         });
+
+        last = Instant::now();
     }
 }

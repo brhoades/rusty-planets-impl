@@ -1,6 +1,6 @@
 use piston_window::*;
 use std::time::Duration;
-use nalgebra::Point2;
+use nalgebra::{RealField,Rotation2,Point2,Vector2};
 
 pub trait Renderable {
     fn render(&self, ctx: &Context, graphics: &mut G2d);
@@ -16,12 +16,14 @@ pub trait PhysicsBody {
 
 pub type PhysicsFrame = Motion;
 
+#[derive(Debug)]
 pub struct Motion {
-    velocity: [f64; 2],
-    position: [f64; 2],
+    velocity: Vector2<f64>,
+    position: Point2<f64>,
 }
 
 pub trait Entity: PhysicsBody + Renderable {
+    fn id(&self) -> u32;
     fn name(&self) -> &'static str;
 }
 
@@ -30,26 +32,34 @@ pub struct World {
 }
 
 pub struct Planet {
-    velocity: [f64; 2],
-    position: [f64; 2],
+    velocity: Vector2<f64>,
+    position: Point2<f64>,
     color: [f32; 4],
     size: f64,
     mass: f64,
+    id: u32,
 }
 
 // const G: f64 = 6.67430e-11;
- const G: f64 = 0.001;
+ const G: f64 = 1.0;
 
 impl Planet {
     // makes a new planet that's (theoretically) stable around other at height at a period (% from 0 degrees).
     pub fn new_stable_orbit(other: &Box<dyn Entity>, height: f64, period: f64, mass: f64, size: f64, color: [f32; 4]) -> Box<Self> {
-        let o_pos = other.motion();
-        let mu = G * other.mass();
+        let o_pos = other.motion().position;
+        let pos = Point2::from(o_pos + Vector2::from([height, height / 2.0]));
+
+        let mu = G * (other.mass() + mass);
+        let f_vec = o_pos - pos;
+        let r = nalgebra::Rotation2::new(-f64::frac_pi_2());
+        let rot_unit = r * f_vec.normalize();
         let v = (mu / height).sqrt();
+        let v_vec = v * rot_unit;
 
         Box::new(Planet{
-            velocity: [0.0, v],
-            position: [o_pos.position[0] + height, o_pos.position[1] + height / 2.0],
+            id: 123123,
+            velocity: v_vec,
+            position: pos,
             color,
             size,
             mass,
@@ -58,13 +68,13 @@ impl Planet {
 }
 
 impl Entity for Planet {
+    fn id(&self) -> u32 {
+        return self.id
+    }
+
     fn name(&self) -> &'static str {
         "planet"
     }
-}
-
-fn get_centered_square_extents(center: &[f64; 2], size: f64) -> [f64; 4] {
-    return ellipse::centered([center[0], center[1], size / 2.0, size / 2.0]);
 }
 
 impl Renderable for Planet {
@@ -82,33 +92,27 @@ impl Renderable for Planet {
 
 impl PhysicsBody for Planet {
     fn tick(&self, w: &World, d: Duration) -> PhysicsFrame {
-        let mut dv = [0.0; 2];
+        let mut dv: Vector2<f64> = Vector2::from([0.0; 2]);
 
         for e in &w.entities {
-            let o_mass = e.mass();
-            let pos = Point2::from(self.motion().position);
-            let o_pos = Point2::from(e.motion().position);
-            let vec = pos - o_pos;
-            let dist = vec.norm_squared();
-
-            let g_mass = - G * o_mass * self.mass();
-
-            let force = g_mass / dist * vec.normalize();
-
-            if force[0].is_finite() {
-                println!("x: {:?}", force);
-                dv[0] += force[0];
+            if e.id() == self.id() {
+                continue;
             }
 
-            if force[1].is_finite() {
-                println!("y: {:?}", force);
-                dv[1] += force[1];
-            }
+            let pos = self.motion().position;
+            let o_pos = e.motion().position;
+            let mass = e.mass() + self.mass();
+
+            let vec = o_pos - pos;
+            let r_sq = vec.norm_squared();
+
+            let force = (G * mass) / r_sq * vec.normalize();
+            dv += force;
         }
 
         PhysicsFrame {
-            velocity: [self.velocity[0] + dv[0], self.velocity[1] + dv[1]],
-            position: [self.position[0] + self.velocity[0], self.position[1] + self.velocity[1]],
+            velocity: self.velocity + dv * d.as_secs_f64(),
+            position: self.position + self.velocity * d.as_secs_f64(),
         }
     }
 
@@ -120,7 +124,7 @@ impl PhysicsBody for Planet {
     fn motion(&self) -> Motion {
         Motion {
             position: self.position,
-            velocity: [0.0, 0.0],
+            velocity: self.velocity,
         }
     }
 
@@ -130,7 +134,7 @@ impl PhysicsBody for Planet {
 }
 
 pub struct Star {
-    position: [f64; 2],
+    position: Point2<f64>,
     color: [f32; 4],
     mass: f64,
     size: f64,
@@ -139,19 +143,19 @@ pub struct Star {
 impl Star {
     pub fn new(window_size: Size) -> Box<Star> {
         Box::new(Star{
-            position: [window_size.width / 2.0, window_size.height / 2.0],
+            position: Point2::from([window_size.width / 2.0, window_size.height / 2.0]),
             color: [1.0, 0.5, 0.5, 1.0],
             mass: 1000.0,
-            size: 20.0,
+            size: 15.0,
         })
     }
 }
 
 impl PhysicsBody for Star {
     // Let's pretend the star doesn't move
-    fn tick(&self, _w: &World, d: Duration) -> PhysicsFrame {
+    fn tick(&self, _w: &World, _d: Duration) -> PhysicsFrame {
         PhysicsFrame {
-            velocity: [0.0, 0.0],
+            velocity: Vector2::from([0.0, 0.0]),
             position: self.position,
         }
     }
@@ -161,7 +165,7 @@ impl PhysicsBody for Star {
     fn motion(&self) -> Motion {
         Motion {
             position: self.position,
-            velocity: [0.0, 0.0],
+            velocity: Vector2::from([0.0, 0.0]),
         }
     }
 
@@ -184,6 +188,10 @@ impl Renderable for Star {
 }
 
 impl Entity for Star {
+    fn id(&self) -> u32 {
+        return 1
+    }
+
     fn name(&self) -> &'static str {
         "Star"
     }

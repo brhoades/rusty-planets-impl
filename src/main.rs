@@ -19,7 +19,7 @@ fn main() {
         Planet::new_stable_orbit(
             &world.entities[0],
             100.0,
-            0.0,
+            0.1,
             1.0,
             5.0,
             [0.0, 0.0, 1.0, 1.0],
@@ -31,12 +31,88 @@ fn main() {
             &world.entities[1],
             10.0,
             0.0,
-            0.01,
+            0.001,
             2.5,
             [1.0; 4],
         )
     );
 
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            30.0,
+            0.9,
+            1.0,
+            2.5,
+            [1.0, 0.4, 0.4, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            60.0,
+            0.7,
+            1.0,
+            4.0,
+            [1.0, 1.0, 0.1, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            150.0,
+            0.2,
+            1.0,
+            4.0,
+            [1.0, 0.1, 0.1, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            200.0,
+            0.8,
+            10.0,
+            8.0,
+            [1.0, 0.8, 0.0, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            275.0,
+            0.4,
+            8.0,
+            6.0,
+            [1.0, 0.5, 0.0, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            350.0,
+            0.1,
+            4.0,
+            4.0,
+            [0.45, 0.45, 0.7, 1.0],
+        )
+    );
+
+    world.entities.push(
+        Planet::new_stable_orbit(
+            &world.entities[0],
+            425.0,
+            0.5,
+            4.0,
+            4.0,
+            [0.4, 0.4, 0.9, 1.0],
+        )
+    );
     let mut last = Instant::now();
 
     while let Some(event) = window.next() {

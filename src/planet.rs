@@ -1,6 +1,7 @@
 use piston_window::*;
 use std::time::Duration;
 use nalgebra::{RealField,Rotation2,Point2,Vector2};
+use rand::prelude::*;
 
 pub trait Renderable {
     fn render(&self, ctx: &Context, graphics: &mut G2d);
@@ -41,13 +42,14 @@ pub struct Planet {
 }
 
 // const G: f64 = 6.67430e-11;
- const G: f64 = 1.0;
+ const G: f64 = 5.0;
 
 impl Planet {
     // makes a new planet that's (theoretically) stable around other at height at a period (% from 0 degrees).
     pub fn new_stable_orbit(other: &Box<dyn Entity>, height: f64, period: f64, mass: f64, size: f64, color: [f32; 4]) -> Box<Self> {
         let o_pos = other.motion().position;
-        let pos = Point2::from(o_pos + Vector2::from([height, height / 2.0]));
+        let orbit_vec = nalgebra::Rotation2::new(f64::pi() * 2.0 * period) * Vector2::from([height, height / 2.0]);
+        let pos = Point2::from(o_pos) + orbit_vec;
 
         let mu = G * (other.mass() + mass);
         let f_vec = o_pos - pos;
@@ -56,9 +58,12 @@ impl Planet {
         let v = (mu / height).sqrt();
         let v_vec = v * rot_unit;
 
+        // add parent velocity
+        let velocity = other.motion().velocity + v_vec;
+
         Box::new(Planet{
-            id: 123123,
-            velocity: v_vec,
+            id: rand::thread_rng().gen(),
+            velocity,
             position: pos,
             color,
             size,
@@ -144,7 +149,7 @@ impl Star {
     pub fn new(window_size: Size) -> Box<Star> {
         Box::new(Star{
             position: Point2::from([window_size.width / 2.0, window_size.height / 2.0]),
-            color: [1.0, 0.5, 0.5, 1.0],
+            color: [1.0, 1.0, 0.8, 1.0],
             mass: 1000.0,
             size: 15.0,
         })

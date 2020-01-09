@@ -26,6 +26,7 @@ fn main() {
         )
     );
 
+    /*
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[1],
@@ -36,6 +37,7 @@ fn main() {
             [1.0; 4],
         )
     );
+    */
 
     world.entities.push(
         Planet::new_stable_orbit(

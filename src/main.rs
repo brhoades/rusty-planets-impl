@@ -1,6 +1,6 @@
-mod planet;
+mod bodies;
 use piston_window::*;
-use planet::{World,PhysicsFrame,Planet,Star};
+use bodies::{World,Planet,Star};
 use std::time::{Instant,Duration};
 
 const STEP: Duration = Duration::from_millis(1000/60);

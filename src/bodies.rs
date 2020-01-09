@@ -1,6 +1,6 @@
 use piston_window::*;
 use std::time::Duration;
-use nalgebra::{RealField,Rotation2,Point2,Vector2};
+use nalgebra::{RealField,Point2,Vector2};
 use rand::prelude::*;
 
 pub trait Renderable {
@@ -32,6 +32,7 @@ pub struct World {
     pub entities: Vec<Box<dyn Entity>>
 }
 
+#[derive(Debug)]
 pub struct Planet {
     velocity: Vector2<f64>,
     position: Point2<f64>,

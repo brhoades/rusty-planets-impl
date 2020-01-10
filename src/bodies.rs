@@ -42,30 +42,47 @@ pub struct Planet {
     id: u32,
 }
 
-// const G: f64 = 6.67430e-11;
- const G: f64 = 5.0;
+const G: f64 = 6.67430e-11;
+const SMALL_SIZE_SCALE_FACTOR: f64 = 15_000_000.0 / 12_756.0;
+const MED_SIZE_SCALE_FACTOR: f64 = 30_000_000.0 / 49_528.0;
+const LARGE_SIZE_SCALE_FACTOR: f64 = 45_000_000.0 / 142_984.0;
+
+// Scale size. 100M km is the visability for the star.
+// around 10M km gets you a pixel. Scale by fraction of max size getting 50M.
+fn scale_size(size_in: f64) -> f64 {
+    if size_in < 15_000.0 {
+        return size_in * SMALL_SIZE_SCALE_FACTOR;
+    }
+
+    if size_in < 50_000.0 {
+        return size_in * MED_SIZE_SCALE_FACTOR;
+    }
+
+    return size_in * LARGE_SIZE_SCALE_FACTOR;
+}
+
+const X_SIZE: f64 = 5_000_000_000.0;
+const Y_SIZE: f64 = X_SIZE;
 
 impl Planet {
     // makes a new planet that's (theoretically) stable around other at height at a period (% from 0 degrees).
-    pub fn new_stable_orbit(other: &Box<dyn Entity>, height: f64, period: f64, mass: f64, size: f64, color: [f32; 4]) -> Box<Self> {
+    pub fn new_stable_orbit(other: &Box<dyn Entity>, height: f64, mass: f64, size: f64, color: [f32; 4]) -> Box<Self> {
         let o_pos = other.motion().position;
-        let orbit_vec = nalgebra::Rotation2::new(f64::pi() * 2.0 * period) * Vector2::from([height, height / 2.0]);
-        let pos = Point2::from(o_pos) + orbit_vec;
+        let period: f64 = rand::thread_rng().gen_range(0.0, 2.0);
+        let orbit_vec = nalgebra::Rotation2::new(f64::pi() * period) * Vector2::from([height, height / 2.0]);
+        let position = Point2::from(o_pos) + orbit_vec;
 
         let mu = G * (other.mass() + mass);
-        let f_vec = o_pos - pos;
-        let r = nalgebra::Rotation2::new(-f64::frac_pi_2());
-        let rot_unit = r * f_vec.normalize();
-        let v = (mu / height).sqrt();
-        let v_vec = v * rot_unit;
+        let f_vec = o_pos - position;
+        let velocity = (mu / f_vec.norm()).sqrt() * (nalgebra::Rotation2::new(-f64::frac_pi_2()) * f_vec.normalize());
 
         // add parent velocity
-        let velocity = other.motion().velocity + v_vec;
+        // let velocity = other.motion().velocity + v_vec;
 
         Box::new(Planet{
             id: rand::thread_rng().gen(),
             velocity,
-            position: pos,
+            position,
             color,
             size,
             mass,
@@ -85,7 +102,7 @@ impl Entity for Planet {
 
 impl Renderable for Planet {
     fn render(&self, context: &Context, graphics: &mut G2d) {
-        let extents = ellipse::circle(self.position[0], self.position[1], self.size);
+        let extents = ellipse::circle(self.position[0], self.position[1], scale_size(self.size));
 
         rectangle(
             self.color,
@@ -147,12 +164,12 @@ pub struct Star {
 }
 
 impl Star {
-    pub fn new(window_size: Size) -> Box<Star> {
+    pub fn new() -> Box<Star> {
         Box::new(Star{
-            position: Point2::from([window_size.width / 2.0, window_size.height / 2.0]),
+            position: Point2::from([X_SIZE / 2.0, Y_SIZE / 2.0]),
             color: [1.0, 1.0, 0.8, 1.0],
-            mass: 1000.0,
-            size: 15.0,
+            mass: 1.989e30,
+            size: 50_000_000.0, // size: 1_391_000.0,
         })
     }
 }

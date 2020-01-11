@@ -10,3 +10,6 @@ edition = "2018"
 piston_window = "0.98.0"
 nalgebra = "0.18"
 rand = "0.7"
+
+log = "0.4"
+pretty_env_logger = "0.3"

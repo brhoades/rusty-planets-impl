@@ -2,10 +2,15 @@ mod bodies;
 use piston_window::*;
 use bodies::{World,Planet,Star};
 use std::time::{Instant,Duration};
+use pretty_env_logger;
+use log::{debug};
 
 const STEP: Duration = Duration::from_millis(1000/60);
 
 fn main() {
+    pretty_env_logger::init();
+
+    debug!("main - initializing window");
     let mut window: PistonWindow =
         WindowSettings::new("Rusty Planets", [640, 480])
         .exit_on_esc(true)
@@ -14,8 +19,10 @@ fn main() {
         .build()
         .unwrap();
 
+    debug!("main - initializing world");
     let mut world = World{entities: vec!()};
 
+    debug!("main - adding entities");
     world.entities.push(Star::new());
     world.entities.push(
         Planet::new_stable_orbit(
@@ -110,19 +117,25 @@ fn main() {
     let mut scale = get_window_scale(window.size());
     let mut time_scale = 1;
 
+    debug!("main - beginning loop");
     while let Some(event) = window.next() {
         let mut zoom = None;
         match &event {
-            Event::Input(Input::Move(Motion::MouseScroll(pos)), opt) => {
+            Event::Input(Input::Move(Motion::MouseScroll(pos)), _) => {
+                debug!("loop - scroll {:?}", pos);
                 zoom = Some(pos);
             },
-            Event::Input(Input::Text(s), opt) => {
+            Event::Input(Input::Text(s), _) => {
                 if s == "+" {
+                    debug!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
                     time_scale += 1;
                 }
 
                 if s == "-" {
-                    time_scale -= 1;
+                    if time_scale > 0 {
+                        debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
+                        time_scale -= 1;
+                    }
                 }
             },
             _ => (),
@@ -148,12 +161,15 @@ fn main() {
             clear([0.1, 0.1, 0.1, 1.0], graphics);
             match zoom {
                 Some(p) => {
+                    debug!("loop - zoom - old transform: {:?}", context.transform);
                     context.trans(p[0], p[1]);
                     scale[0] += p[0].signum() * 1.28e-4;
                     scale[1] += p[1].signum() * 1.28e-4;
+                    debug!("loop - zoom - scale post: {:?}", context.transform);
                 },
                 None => (),
             }
+            zoom = None;
             let ctx = context.scale(scale[0], scale[1]);
 
             for e in &world.entities {

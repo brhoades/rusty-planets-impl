@@ -5,8 +5,6 @@ use std::time::{Instant,Duration};
 use pretty_env_logger;
 use log::{debug};
 
-const STEP: Duration = Duration::from_millis(1000/60);
-
 fn main() {
     pretty_env_logger::init();
 
@@ -16,6 +14,7 @@ fn main() {
         .exit_on_esc(true)
         .automatic_close(true)
         .resizable(true)
+        .samples(8)
         .build()
         .unwrap();
 
@@ -117,12 +116,58 @@ fn main() {
     let mut last = Instant::now();
     let mut fps = 0;
     let mut last_fps = 0;
-    let mut scale = get_window_scale(window.size());
     let mut time_scale = 1;
+
+    let mut scale_factor = 1.0;
+    let mut scale = get_window_scale(window.size().into(), scale_factor);
+
+    let mut pan = [0.0; 2];
+    let mut pos = [0.0; 2];
+
+    let mut panning = false;
 
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
-        let mut zoom = None;
+        event.mouse_cursor(|new_pos| pos = new_pos);
+        event.resize(|args| scale = get_window_scale(args.window_size, scale_factor));
+        event.button(|args| {
+            match args.button {
+                Button::Mouse(Left) => {
+                    if args.state == ButtonState::Press {
+                        println!("loop - panning start");
+                        panning = true;
+                    } else {
+                        println!("loop - panning end");
+                        panning = false;
+                    }
+                },
+                _ => ()
+            }
+        });
+
+        if panning {
+            event.mouse_relative(|delta| {
+                pan[0] += delta[0];
+                pan[1] += delta[1];
+            });
+        }
+
+        event.mouse_scroll(|dir| {
+            debug!("loop - mouse pos: {:?}", event.mouse_cursor_args());
+            debug!("loop - scroll event: {:?}", dir[1]);
+            let old_scale = scale_factor;
+            if dir[1] > 0.0 {
+                scale_factor /= 0.9;
+            } else {
+                scale_factor *= 0.9;
+            }
+
+            let scale_delta = scale_factor - old_scale;
+            pan = [pos[0] * scale_delta, pos[1] * scale_delta];
+
+            debug!("loop - scale_factor: {:?}", scale_factor);
+            scale = get_window_scale(window.size().into(), scale_factor);
+        });
 
         event.text(|s| {
             if s == "+" {
@@ -136,11 +181,6 @@ fn main() {
                     time_scale -= 1;
                 }
             }
-        });
-
-        event.mouse_scroll(|dir| {
-            debug!("loop - scroll event {:?}", dir);
-            zoom = Some(dir[1]);
         });
 
         let elapsed = last.elapsed() * time_scale;
@@ -165,22 +205,11 @@ fn main() {
                 fps += 1;
             } else {
                 last_fps = fps;
-                debug!("Frames: {}", last_fps);
                 sec = Instant::now();
                 fps = 0;
             }
 
-            match zoom {
-                Some(p) => {
-                    debug!("loop - zoom - old transform: {:?}", context.transform);
-                    scale[0] += p * 1.28e-4;
-                    scale[1] += p * 1.28e-4;
-                    debug!("loop - zoom - scale post: {:?}", context.transform);
-                    zoom = None;
-                },
-                None => (),
-            }
-            let ctx = context.scale(scale[0], scale[1]);
+            let ctx = context.trans_pos(pan).scale_pos(scale);
 
             for e in &world.entities {
                 e.render(&ctx, graphics);
@@ -192,6 +221,9 @@ fn main() {
 }
 
 #[inline]
-fn get_window_scale(size: Size) -> [f64; 2] {
-    return [size.width / 5_000_000_000.0, size.height / 5_000_000_000.0];
+fn get_window_scale(size: [f64; 2], factor: f64) -> [f64; 2] {
+    let ratio = size[0] / size[1];
+    let fb_dims = [5_000_000_000.0 * ratio, 5_000_000_000.0];
+
+    return [factor * size[0] / fb_dims[0], factor * size[1] / fb_dims[1]];
 }

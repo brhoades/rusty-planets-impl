@@ -107,10 +107,29 @@ fn main() {
         )
     );
     let mut last = Instant::now();
+    let mut scale = get_window_scale(window.size());
+    let mut time_scale = 1;
 
     while let Some(event) = window.next() {
+        let mut zoom = None;
+        match &event {
+            Event::Input(Input::Move(Motion::MouseScroll(pos)), opt) => {
+                zoom = Some(pos);
+            },
+            Event::Input(Input::Text(s), opt) => {
+                if s == "+" {
+                    time_scale += 1;
+                }
+
+                if s == "-" {
+                    time_scale -= 1;
+                }
+            },
+            _ => (),
+        }
+
         std::thread::sleep(STEP);
-        let elapsed = last.elapsed();
+        let elapsed = last.elapsed() * time_scale;
 
         // In-order physics state of next frame
         let frames = world.entities
@@ -125,10 +144,16 @@ fn main() {
             .map(|(e, f)| e.set(f))
             .for_each(drop); // drain to evaluate lazy iter
 
-        let scale = get_window_scale(window.size());
-
         window.draw_2d(&event, |context, graphics, _device| {
             clear([0.1, 0.1, 0.1, 1.0], graphics);
+            match zoom {
+                Some(p) => {
+                    context.trans(p[0], p[1]);
+                    scale[0] += p[0].signum() * 1.28e-4;
+                    scale[1] += p[1].signum() * 1.28e-4;
+                },
+                None => (),
+            }
             let ctx = context.scale(scale[0], scale[1]);
 
             for e in &world.entities {

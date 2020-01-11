@@ -113,35 +113,36 @@ fn main() {
             [0.4, 0.4, 0.9, 1.0],
         )
     );
+    let mut sec = Instant::now();
     let mut last = Instant::now();
+    let mut fps = 0;
+    let mut last_fps = 0;
     let mut scale = get_window_scale(window.size());
     let mut time_scale = 1;
 
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
         let mut zoom = None;
-        match &event {
-            Event::Input(Input::Move(Motion::MouseScroll(pos)), _) => {
-                debug!("loop - scroll {:?}", pos);
-                zoom = Some(pos);
-            },
-            Event::Input(Input::Text(s), _) => {
-                if s == "+" {
-                    debug!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
-                    time_scale += 1;
-                }
 
-                if s == "-" {
-                    if time_scale > 0 {
-                        debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
-                        time_scale -= 1;
-                    }
-                }
-            },
-            _ => (),
-        }
+        event.text(|s| {
+            if s == "+" {
+                debug!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
+                time_scale += 1;
+            }
 
-        std::thread::sleep(STEP);
+            if s == "-" {
+                if time_scale > 0 {
+                    debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
+                    time_scale -= 1;
+                }
+            }
+        });
+
+        event.mouse_scroll(|dir| {
+            debug!("loop - scroll event {:?}", dir);
+            zoom = Some(dir[1]);
+        });
+
         let elapsed = last.elapsed() * time_scale;
 
         // In-order physics state of next frame
@@ -159,17 +160,26 @@ fn main() {
 
         window.draw_2d(&event, |context, graphics, _device| {
             clear([0.1, 0.1, 0.1, 1.0], graphics);
+
+            if sec.elapsed().as_secs_f32() < 1.0 {
+                fps += 1;
+            } else {
+                last_fps = fps;
+                debug!("Frames: {}", last_fps);
+                sec = Instant::now();
+                fps = 0;
+            }
+
             match zoom {
                 Some(p) => {
                     debug!("loop - zoom - old transform: {:?}", context.transform);
-                    context.trans(p[0], p[1]);
-                    scale[0] += p[0].signum() * 1.28e-4;
-                    scale[1] += p[1].signum() * 1.28e-4;
+                    scale[0] += p * 1.28e-4;
+                    scale[1] += p * 1.28e-4;
                     debug!("loop - zoom - scale post: {:?}", context.transform);
+                    zoom = None;
                 },
                 None => (),
             }
-            zoom = None;
             let ctx = context.scale(scale[0], scale[1]);
 
             for e in &world.entities {

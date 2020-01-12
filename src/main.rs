@@ -1,6 +1,6 @@
 mod bodies;
 use piston_window::*;
-use bodies::{World,Planet,Star};
+use bodies::*;
 use std::time::{Instant,Duration};
 use nalgebra::{Point3, Point2, Vector2, Vector3, Matrix, Matrix3, U3, U2, Projective2};
 use pretty_env_logger;
@@ -27,91 +27,109 @@ fn main() {
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            149.6e6,
-            5.9722e24,
-            12742.0,
-            [0.2, 0.2, 1.0, 1.0],
-        )
+            PlanetParams{
+                name: "Earth",
+                height: 149.6e6,
+                mass: 5.9722e24,
+                diameter: 12742.0,
+                color: [0.2, 0.2, 1.0, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit( // moon
             &world.entities[1],
-            0.384e6,
-            0.073e24,
-            3475.0,
-            [1.0; 4],
-        )
+            PlanetParams{
+                name: "Luna",
+                height: 0.384e6,
+                mass: 0.073e24,
+                diameter: 3475.0,
+                color: [1.0; 4],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            58_000_000.0,
-            3.285e23,
-            4879.4,
-            [1.0, 0.4, 0.4, 1.0],
-        )
+            PlanetParams{
+                name: "Mercury",
+                height: 58_000_000.0,
+                mass: 3.285e23,
+                diameter: 4879.4,
+                color: [1.0, 0.4, 0.4, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            108_490_000.0,
-            4.867e24,
-            12104.0,
-            [1.0, 1.0, 0.1, 1.0],
-        )
+            PlanetParams{
+                name: "Venus",
+                height: 108_490_000.0,
+                mass: 4.867e24,
+                diameter: 12104.0,
+                color: [1.0, 1.0, 0.1, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            227.9e6,
-            0.642e24,
-            6792.0,
-            [1.0, 0.1, 0.1, 1.0],
-        )
+            PlanetParams{
+                name: "Mars",
+                height: 227.9e6,
+                mass: 0.642e24,
+                diameter: 6792.0,
+                color: [1.0, 0.1, 0.1, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            778.6e6,
-            1898e24,
-            142_984.0,
-            [1.0, 0.8, 0.0, 1.0],
-        )
+            PlanetParams{
+                name: "Jupiter",
+                height: 778.6e6,
+                mass: 1898e24,
+                diameter: 142_984.0,
+                color: [1.0, 0.8, 0.0, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            1433.5e6,
-            568e24,
-            120_536.0,
-            [1.0, 0.5, 0.0, 1.0],
-        )
+            PlanetParams{
+                name: "Saturn",
+                height: 1433.5e6,
+                mass: 568e24,
+                diameter: 120_536.0,
+                color: [1.0, 0.5, 0.0, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            2872.5e6,
-            86.8e24,
-            51_118.0,
-            [0.45, 0.45, 0.7, 1.0],
-        )
+            PlanetParams{
+                name: "Neptune",
+                height: 2872.5e6,
+                mass: 86.8e24,
+                diameter: 51_118.0,
+                color: [0.45, 0.45, 0.7, 1.0],
+            })
     );
 
     world.entities.push(
         Planet::new_stable_orbit(
             &world.entities[0],
-            4495.1e6,
-            102.0e24,
-            49_528.0,
-            [0.4, 0.4, 0.9, 1.0],
-        )
+            PlanetParams{
+                name: "Uranus",
+                height: 4495.1e6,
+                mass: 102.0e24,
+                diameter: 49_528.0,
+                color: [0.4, 0.4, 0.9, 1.0],
+            })
     );
     let mut sec = Instant::now();
     let mut last = Instant::now();
@@ -193,7 +211,11 @@ fn main() {
         // In-order physics state of next frame
         let frames = world.entities
             .iter()
-            .map(|e| e.tick(&world, elapsed))
+            .enumerate()
+            .map(|(i, e)| {
+                let (l, r) = world.entities.split_at(i);
+                e.tick(l.iter().chain(r).collect::<Vec<_>>(), elapsed)
+            })
             .collect::<Vec<_>>();
 
         // apply frames

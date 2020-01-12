@@ -2,6 +2,7 @@ mod bodies;
 use piston_window::*;
 use bodies::{World,Planet,Star};
 use std::time::{Instant,Duration};
+use nalgebra::{Point3, Point2, Vector2, Vector3, Matrix, Matrix3, U3, U2, Projective2};
 use pretty_env_logger;
 use log::{debug};
 
@@ -118,21 +119,17 @@ fn main() {
     let mut last_fps = 0;
     let mut time_scale = 1;
 
-    let mut scale_factor = 1.0;
-    let mut scale = get_window_scale(window.size().into(), scale_factor);
 
-    let mut pan = [0.0; 2];
-    let mut pos = [0.0; 2];
-
+    let mut viewport_transform = recalculate_transform(window.size().into());
+    let mut pos = Point2::new(0.0, 0.0);
     let mut panning = false;
 
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
-        event.mouse_cursor(|new_pos| pos = new_pos);
-        event.resize(|args| scale = get_window_scale(args.window_size, scale_factor));
+        event.mouse_cursor(|new_pos| pos = Point2::from(new_pos));
         event.button(|args| {
             match args.button {
-                Button::Mouse(Left) => {
+                Button::Mouse(MouseButton::Left) => {
                     if args.state == ButtonState::Press {
                         println!("loop - panning start");
                         panning = true;
@@ -145,28 +142,36 @@ fn main() {
             }
         });
 
+        // if panning, hook the relative mouse movements to the pan variable;
         if panning {
             event.mouse_relative(|delta| {
-                pan[0] += delta[0];
-                pan[1] += delta[1];
+                debug!("loop - pan - old transform: {}", viewport_transform.matrix());
+                viewport_transform.matrix_mut_unchecked().append_translation_mut(&Vector2::from(delta));
+                debug!("loop - pan - new transform: {}", viewport_transform.matrix());
             });
         }
 
         event.mouse_scroll(|dir| {
-            debug!("loop - mouse pos: {:?}", event.mouse_cursor_args());
-            debug!("loop - scroll event: {:?}", dir[1]);
-            let old_scale = scale_factor;
-            if dir[1] > 0.0 {
-                scale_factor /= 0.9;
+            debug!("loop - zoom - old transform: {}", viewport_transform.matrix());
+            debug!("loop - zoom - pos: {}", pos);
+
+            let zoom = if dir[1] > 0.0 {
+                1.5
             } else {
-                scale_factor *= 0.9;
-            }
+                1.0/1.5
+            };
 
-            let scale_delta = scale_factor - old_scale;
-            pan = [pos[0] * scale_delta, pos[1] * scale_delta];
-
-            debug!("loop - scale_factor: {:?}", scale_factor);
-            scale = get_window_scale(window.size().into(), scale_factor);
+            let point_project = pos;
+            let vector = Vector2::new(point_project.x, point_project.y);
+            debug!("loop - zoom - projected point: {}", vector);
+            viewport_transform = Projective2::from_matrix_unchecked(
+                viewport_transform
+                    .matrix_mut_unchecked()
+                    .append_translation(&-vector)
+                    .append_scaling(zoom)
+                    .append_translation(&vector)
+            );
+            debug!("loop - zoom - new transform: {}", viewport_transform.matrix());
         });
 
         event.text(|s| {
@@ -209,7 +214,7 @@ fn main() {
                 fps = 0;
             }
 
-            let ctx = context.trans_pos(pan).scale_pos(scale);
+            let ctx = context.append_transform(matrix_to_array(viewport_transform.matrix()));
 
             for e in &world.entities {
                 e.render(&ctx, graphics);
@@ -221,9 +226,24 @@ fn main() {
 }
 
 #[inline]
-fn get_window_scale(size: [f64; 2], factor: f64) -> [f64; 2] {
-    let ratio = size[0] / size[1];
-    let fb_dims = [5_000_000_000.0 * ratio, 5_000_000_000.0];
+fn matrix_to_array(t: &Matrix3<f64>) -> [[f64; 3]; 2] {
+    [[t.get(0).unwrap().clone(), t.get(3).unwrap().clone(), t.get(6).unwrap().clone()], [t.get(1).unwrap().clone(), t.get(4).unwrap().clone(), t.get(7).unwrap().clone()]]
+}
 
-    return [factor * size[0] / fb_dims[0], factor * size[1] / fb_dims[1]];
+#[inline]
+fn recalculate_transform(size: [f64; 2]) -> Projective2<f64> {
+    let window_scale = Vector2::from(get_window_scale(size));
+    Projective2::from_matrix_unchecked(Matrix3::new_nonuniform_scaling(&window_scale))
+}
+
+#[inline]
+fn get_window_scale(size: [f64; 2]) -> [f64; 2] {
+    let fb_dims = [5_000_000_000.0 * get_window_ratio(size), 5_000_000_000.0];
+
+    return [size[0] / fb_dims[0], size[1] / fb_dims[1]];
+}
+
+#[inline]
+fn get_window_ratio(size: [f64; 2]) -> f64 {
+    return size[0] / size[1];
 }

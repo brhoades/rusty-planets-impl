@@ -217,7 +217,7 @@ fn main() {
             let ctx = context.append_transform(matrix_to_array(viewport_transform.matrix()));
 
             for e in &world.entities {
-                e.render(&ctx, graphics);
+                e.render(&ctx, &viewport_transform, graphics);
             }
         });
 

@@ -1,10 +1,11 @@
 use piston_window::*;
 use std::time::Duration;
-use nalgebra::{RealField,Point2,Vector2};
+use nalgebra::{RealField,Point2,Vector2,Projective2};
 use rand::prelude::*;
+use log::{debug};
 
 pub trait Renderable {
-    fn render(&self, ctx: &Context, graphics: &mut G2d);
+    fn render(&self, context: &Context, transform: &Projective2<f64>, graphics: &mut G2d);
 }
 
 pub trait PhysicsBody {
@@ -43,23 +44,6 @@ pub struct Planet {
 }
 
 const G: f64 = 6.67430e-11;
-const SMALL_SIZE_SCALE_FACTOR: f64 = 15_000_000.0 / 12_756.0;
-const MED_SIZE_SCALE_FACTOR: f64 = 30_000_000.0 / 49_528.0;
-const LARGE_SIZE_SCALE_FACTOR: f64 = 45_000_000.0 / 142_984.0;
-
-// Scale size. 100M km is the visability for the star.
-// around 10M km gets you a pixel. Scale by fraction of max size getting 50M.
-fn scale_size(size_in: f64) -> f64 {
-    if size_in < 15_000.0 {
-        return size_in * SMALL_SIZE_SCALE_FACTOR;
-    }
-
-    if size_in < 50_000.0 {
-        return size_in * MED_SIZE_SCALE_FACTOR;
-    }
-
-    return size_in * LARGE_SIZE_SCALE_FACTOR;
-}
 
 const X_SIZE: f64 = 5_000_000_000.0;
 const Y_SIZE: f64 = X_SIZE;
@@ -77,7 +61,7 @@ impl Planet {
         let velocity = (mu / f_vec.norm()).sqrt() * (nalgebra::Rotation2::new(-f64::frac_pi_2()) * f_vec.normalize());
 
         // add parent velocity
-        // let velocity = other.motion().velocity + v_vec;
+        let velocity = other.motion().velocity + velocity;
 
         Box::new(Planet{
             id: rand::thread_rng().gen(),
@@ -101,15 +85,27 @@ impl Entity for Planet {
 }
 
 impl Renderable for Planet {
-    fn render(&self, context: &Context, graphics: &mut G2d) {
-        let extents = ellipse::circle(self.position[0], self.position[1], scale_size(self.size));
+    fn render(&self, context: &Context, transform: &Projective2<f64>, graphics: &mut G2d) {
+        let scale = transform.matrix().get(0).unwrap();
+        let scale_zoom = 5_000_000_000.0 * scale;
+        let mut ellipse = Ellipse::new(self.color);
+        let size = if scale_zoom > 100_000.0 {
+            if self.size < 10_000_000.0 {
+                self.size * 10.0
+            } else {
+                self.size
+            }
+        } else if self.size < 10_000_000.0 {
+            ellipse = Ellipse::new_border(self.color, 0.45 / scale);
+            5.0 / scale // statically sized placeholder
+        } else {
+            self.size
+        };
 
-        rectangle(
-            self.color,
-            extents,
-            context.transform,
-            graphics
-        );
+        let extents = ellipse::circle(self.position[0], self.position[1], size);
+
+
+        graphics.ellipse(&ellipse, extents, &context.draw_state, context.transform);
     }
 }
 
@@ -198,7 +194,7 @@ impl PhysicsBody for Star {
 }
 
 impl Renderable for Star {
-    fn render(&self, context: &Context, graphics: &mut G2d) {
+    fn render(&self, context: &Context, transform: &Projective2<f64>, graphics: &mut G2d) {
         let extents = ellipse::circle(self.position[0], self.position[1], self.size);
 
         rectangle(

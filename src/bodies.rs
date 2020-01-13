@@ -1,8 +1,7 @@
 use log::debug;
-use nalgebra::{Point2, Projective2, RealField, Rotation2, Vector2, U2};
+use nalgebra::{Point2, Projective2, RealField, Rotation2, Vector2};
 use piston_window::*;
 use rand::prelude::*;
-use std::convert::TryFrom;
 use std::time::Duration;
 
 pub trait Renderable {
@@ -109,7 +108,8 @@ impl Planet {
         let parent = &world.entities.get(self.parent_id).unwrap();
         let vec = self.position - parent.motion().position;
         let unit_vec: Vector2<f64> = vec.normalize();
-        let world_rot = Rotation2::from_matrix(&world_transform.matrix().fixed_resize(2.0));
+        let wrot: Rotation2<f64> =
+            Rotation2::from_matrix(&world_transform.matrix().fixed_resize(2.0));
 
         // highlights reduce with the inverse square of the distance
         //let strength = parent.size() / (f64::pi() * 4.0 * vec.norm_squared());
@@ -156,7 +156,7 @@ impl Planet {
             .zip(transes.iter())
             .into_iter()
             .map(|(color, trans)| {
-                Rectangle::new(color.clone()).draw(
+                Rectangle::new(*color).draw(
                     extents,
                     &DrawState::new_inside(),
                     trans.clone(),
@@ -192,9 +192,8 @@ impl Planet {
         colors
             .iter()
             .zip(transes.iter())
-            .into_iter()
             .map(|(color, trans)| {
-                Rectangle::new(color.clone()).draw(
+                Rectangle::new(*color).draw(
                     extents,
                     &DrawState::new_inside(),
                     trans.clone(),
@@ -207,7 +206,7 @@ impl Planet {
 
 impl Entity for Planet {
     fn id(&self) -> usize {
-        return self.id;
+        self.id
     }
 
     fn name(&self) -> &'static str {

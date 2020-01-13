@@ -1,10 +1,10 @@
 mod bodies;
 use bodies::*;
 use log::debug;
-use nalgebra::{Matrix, Matrix3, Point2, Point3, Projective2, Vector2, Vector3, U2, U3};
+use nalgebra::{Matrix3, Point2, Projective2, Vector2};
 use piston_window::*;
 use pretty_env_logger;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn main() {
     pretty_env_logger::init();
@@ -128,17 +128,16 @@ fn main() {
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
         event.mouse_cursor(|new_pos| pos = Point2::from(new_pos));
-        event.button(|args| match args.button {
-            Button::Mouse(MouseButton::Left) => {
+        event.button(|args| {
+            if let Button::Mouse(MouseButton::Left) = args.button {
                 if args.state == ButtonState::Press {
-                    println!("loop - panning start");
+                    debug!("loop - panning start");
                     panning = true;
                 } else {
-                    println!("loop - panning end");
+                    debug!("loop - panning end");
                     panning = false;
                 }
             }
-            _ => (),
         });
 
         // if panning, hook the relative mouse movements to the pan variable;
@@ -189,11 +188,9 @@ fn main() {
                 time_scale += 1;
             }
 
-            if s == "-" {
-                if time_scale > 0 {
-                    debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
-                    time_scale -= 1;
-                }
+            if s == "-" && time_scale > 0 {
+                debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
+                time_scale -= 1;
             }
         });
 
@@ -244,16 +241,8 @@ fn main() {
 #[inline]
 fn matrix_to_array(t: &Matrix3<f64>) -> [[f64; 3]; 2] {
     [
-        [
-            t.get(0).unwrap().clone(),
-            t.get(3).unwrap().clone(),
-            t.get(6).unwrap().clone(),
-        ],
-        [
-            t.get(1).unwrap().clone(),
-            t.get(4).unwrap().clone(),
-            t.get(7).unwrap().clone(),
-        ],
+        [*t.get(0).unwrap(), *t.get(3).unwrap(), *t.get(6).unwrap()],
+        [*t.get(1).unwrap(), *t.get(4).unwrap(), *t.get(7).unwrap()],
     ]
 }
 
@@ -267,10 +256,10 @@ fn recalculate_transform(size: [f64; 2]) -> Projective2<f64> {
 fn get_window_scale(size: [f64; 2]) -> [f64; 2] {
     let fb_dims = [5_000_000_000.0 * get_window_ratio(size), 5_000_000_000.0];
 
-    return [size[0] / fb_dims[0], size[1] / fb_dims[1]];
+    [size[0] / fb_dims[0], size[1] / fb_dims[1]]
 }
 
 #[inline]
 fn get_window_ratio(size: [f64; 2]) -> f64 {
-    return size[0] / size[1];
+    size[0] / size[1]
 }

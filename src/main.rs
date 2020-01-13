@@ -1,17 +1,16 @@
 mod bodies;
-use piston_window::*;
 use bodies::*;
-use std::time::{Instant,Duration};
-use nalgebra::{Point3, Point2, Vector2, Vector3, Matrix, Matrix3, U3, U2, Projective2};
+use log::debug;
+use nalgebra::{Matrix, Matrix3, Point2, Point3, Projective2, Vector2, Vector3, U2, U3};
+use piston_window::*;
 use pretty_env_logger;
-use log::{debug};
+use std::time::{Duration, Instant};
 
 fn main() {
     pretty_env_logger::init();
 
     debug!("main - initializing window");
-    let mut window: PistonWindow =
-        WindowSettings::new("Rusty Planets", [640, 480])
+    let mut window: PistonWindow = WindowSettings::new("Rusty Planets", [640, 480])
         .exit_on_esc(true)
         .automatic_close(true)
         .resizable(true)
@@ -20,123 +19,107 @@ fn main() {
         .unwrap();
 
     debug!("main - initializing world");
-    let mut world = World{entities: vec!()};
+    let mut world = World { entities: vec![] };
 
     debug!("main - adding entities");
     world.entities.push(Star::new());
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Earth",
-                height: 149.6e6,
-                mass: 5.9722e24,
-                diameter: 12742.0,
-                color: [0.2, 0.2, 1.0, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Earth",
+        height: 149.6e6,
+        mass: 5.9722e24,
+        diameter: 12742.0,
+        color: [0.2, 0.2, 1.0, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit( // moon
-            &world.entities[1],
-            PlanetParams{
-                name: "Luna",
-                height: 0.384e6,
-                mass: 0.073e24,
-                diameter: 3475.0,
-                color: [1.0; 4],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(
+        // moon
+        PlanetParams {
+            parent: &world.entities[1],
+            name: "Luna",
+            height: 0.384e6,
+            mass: 0.073e24,
+            diameter: 3475.0,
+            color: [1.0; 4],
+            id: world.entities.len(),
+        },
+    ));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Mercury",
-                height: 58_000_000.0,
-                mass: 3.285e23,
-                diameter: 4879.4,
-                color: [1.0, 0.4, 0.4, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Mercury",
+        height: 58_000_000.0,
+        mass: 3.285e23,
+        diameter: 4879.4,
+        color: [1.0, 0.4, 0.4, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Venus",
-                height: 108_490_000.0,
-                mass: 4.867e24,
-                diameter: 12104.0,
-                color: [1.0, 1.0, 0.1, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Venus",
+        height: 108_490_000.0,
+        mass: 4.867e24,
+        diameter: 12104.0,
+        color: [1.0, 1.0, 0.1, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Mars",
-                height: 227.9e6,
-                mass: 0.642e24,
-                diameter: 6792.0,
-                color: [1.0, 0.1, 0.1, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Mars",
+        height: 227.9e6,
+        mass: 0.642e24,
+        diameter: 6792.0,
+        color: [1.0, 0.1, 0.1, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Jupiter",
-                height: 778.6e6,
-                mass: 1898e24,
-                diameter: 142_984.0,
-                color: [1.0, 0.8, 0.0, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Jupiter",
+        height: 778.6e6,
+        mass: 1898e24,
+        diameter: 142_984.0,
+        color: [1.0, 0.8, 0.0, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Saturn",
-                height: 1433.5e6,
-                mass: 568e24,
-                diameter: 120_536.0,
-                color: [1.0, 0.5, 0.0, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Saturn",
+        height: 1433.5e6,
+        mass: 568e24,
+        diameter: 120_536.0,
+        color: [1.0, 0.5, 0.0, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Neptune",
-                height: 2872.5e6,
-                mass: 86.8e24,
-                diameter: 51_118.0,
-                color: [0.45, 0.45, 0.7, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Neptune",
+        height: 2872.5e6,
+        mass: 86.8e24,
+        diameter: 51_118.0,
+        color: [0.45, 0.45, 0.7, 1.0],
+        id: world.entities.len(),
+    }));
 
-    world.entities.push(
-        Planet::new_stable_orbit(
-            &world.entities[0],
-            PlanetParams{
-                name: "Uranus",
-                height: 4495.1e6,
-                mass: 102.0e24,
-                diameter: 49_528.0,
-                color: [0.4, 0.4, 0.9, 1.0],
-            })
-    );
+    world.entities.push(Planet::new_stable_orbit(PlanetParams {
+        parent: &world.entities[0],
+        name: "Uranus",
+        height: 4495.1e6,
+        mass: 102.0e24,
+        diameter: 49_528.0,
+        color: [0.4, 0.4, 0.9, 1.0],
+        id: world.entities.len(),
+    }));
     let mut sec = Instant::now();
     let mut last = Instant::now();
     let mut fps = 0;
     let mut last_fps = 0;
     let mut time_scale = 1;
-
 
     let mut viewport_transform = recalculate_transform(window.size().into());
     let mut pos = Point2::new(0.0, 0.0);
@@ -145,39 +128,44 @@ fn main() {
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
         event.mouse_cursor(|new_pos| pos = Point2::from(new_pos));
-        event.button(|args| {
-            match args.button {
-                Button::Mouse(MouseButton::Left) => {
-                    if args.state == ButtonState::Press {
-                        println!("loop - panning start");
-                        panning = true;
-                    } else {
-                        println!("loop - panning end");
-                        panning = false;
-                    }
-                },
-                _ => ()
+        event.button(|args| match args.button {
+            Button::Mouse(MouseButton::Left) => {
+                if args.state == ButtonState::Press {
+                    println!("loop - panning start");
+                    panning = true;
+                } else {
+                    println!("loop - panning end");
+                    panning = false;
+                }
             }
+            _ => (),
         });
 
         // if panning, hook the relative mouse movements to the pan variable;
         if panning {
             event.mouse_relative(|delta| {
-                debug!("loop - pan - old transform: {}", viewport_transform.matrix());
-                viewport_transform.matrix_mut_unchecked().append_translation_mut(&Vector2::from(delta));
-                debug!("loop - pan - new transform: {}", viewport_transform.matrix());
+                debug!(
+                    "loop - pan - old transform: {}",
+                    viewport_transform.matrix()
+                );
+                viewport_transform
+                    .matrix_mut_unchecked()
+                    .append_translation_mut(&Vector2::from(delta));
+                debug!(
+                    "loop - pan - new transform: {}",
+                    viewport_transform.matrix()
+                );
             });
         }
 
         event.mouse_scroll(|dir| {
-            debug!("loop - zoom - old transform: {}", viewport_transform.matrix());
+            debug!(
+                "loop - zoom - old transform: {}",
+                viewport_transform.matrix()
+            );
             debug!("loop - zoom - pos: {}", pos);
 
-            let zoom = if dir[1] > 0.0 {
-                1.5
-            } else {
-                1.0/1.5
-            };
+            let zoom = if dir[1] > 0.0 { 1.5 } else { 1.0 / 1.5 };
 
             let point_project = pos;
             let vector = Vector2::new(point_project.x, point_project.y);
@@ -187,9 +175,12 @@ fn main() {
                     .matrix_mut_unchecked()
                     .append_translation(&-vector)
                     .append_scaling(zoom)
-                    .append_translation(&vector)
+                    .append_translation(&vector),
             );
-            debug!("loop - zoom - new transform: {}", viewport_transform.matrix());
+            debug!(
+                "loop - zoom - new transform: {}",
+                viewport_transform.matrix()
+            );
         });
 
         event.text(|s| {
@@ -209,7 +200,8 @@ fn main() {
         let elapsed = last.elapsed() * time_scale;
 
         // In-order physics state of next frame
-        let frames = world.entities
+        let frames = world
+            .entities
             .iter()
             .enumerate()
             .map(|(i, e)| {
@@ -219,7 +211,8 @@ fn main() {
             .collect::<Vec<_>>();
 
         // apply frames
-        world.entities
+        world
+            .entities
             .iter_mut()
             .zip(frames)
             .map(|(e, f)| e.set(f))
@@ -227,6 +220,7 @@ fn main() {
 
         window.draw_2d(&event, |context, graphics, _device| {
             clear([0.1, 0.1, 0.1, 1.0], graphics);
+            graphics.clear_stencil(0);
 
             if sec.elapsed().as_secs_f32() < 1.0 {
                 fps += 1;
@@ -239,7 +233,7 @@ fn main() {
             let ctx = context.append_transform(matrix_to_array(viewport_transform.matrix()));
 
             for e in &world.entities {
-                e.render(&ctx, &viewport_transform, graphics);
+                e.render(&world, &ctx, &viewport_transform, graphics);
             }
         });
 
@@ -249,7 +243,18 @@ fn main() {
 
 #[inline]
 fn matrix_to_array(t: &Matrix3<f64>) -> [[f64; 3]; 2] {
-    [[t.get(0).unwrap().clone(), t.get(3).unwrap().clone(), t.get(6).unwrap().clone()], [t.get(1).unwrap().clone(), t.get(4).unwrap().clone(), t.get(7).unwrap().clone()]]
+    [
+        [
+            t.get(0).unwrap().clone(),
+            t.get(3).unwrap().clone(),
+            t.get(6).unwrap().clone(),
+        ],
+        [
+            t.get(1).unwrap().clone(),
+            t.get(4).unwrap().clone(),
+            t.get(7).unwrap().clone(),
+        ],
+    ]
 }
 
 #[inline]

@@ -4,7 +4,8 @@ use log::debug;
 use nalgebra::{Matrix3, Point2, Projective2, Vector2};
 use piston_window::*;
 use pretty_env_logger;
-use std::time::Instant;
+use std::convert::TryInto;
+use std::time::{Duration, Instant};
 
 fn main() {
     pretty_env_logger::init();
@@ -116,14 +117,14 @@ fn main() {
         id: world.entities.len(),
     }));
     let mut sec = Instant::now();
-    let mut last = Instant::now();
     let mut fps = 0;
     let mut last_fps = 0;
-    let mut time_scale = 1;
+    let mut time_scale = window.events.get_event_settings().ups;
 
     let mut viewport_transform = recalculate_transform(window.size().into());
     let mut pos = Point2::new(0.0, 0.0);
     let mut panning = false;
+    let min_step = (Duration::from_secs(1) / time_scale.try_into().unwrap()).as_secs_f64();
 
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
@@ -185,35 +186,42 @@ fn main() {
         event.text(|s| {
             if s == "+" {
                 debug!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
-                time_scale += 1;
+                time_scale *= 2;
             }
 
             if s == "-" && time_scale > 0 {
+                time_scale /= 2;
                 debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
-                time_scale -= 1;
             }
+            window.set_event_settings(window.events.get_event_settings().ups(time_scale));
         });
 
-        let elapsed = last.elapsed() * time_scale;
+        event.update(|args| {
+            let elapsed = if args.dt < min_step {
+                min_step
+            } else {
+                args.dt
+            };
 
-        // In-order physics state of next frame
-        let frames = world
-            .entities
-            .iter()
-            .enumerate()
-            .map(|(i, e)| {
-                let (l, r) = world.entities.split_at(i);
-                e.tick(l.iter().chain(r).collect::<Vec<_>>(), elapsed)
-            })
-            .collect::<Vec<_>>();
+            // In-order physics state of next frame
+            let frames = world
+                .entities
+                .iter()
+                .enumerate()
+                .map(|(i, e)| {
+                    let (l, r) = world.entities.split_at(i);
+                    e.tick(l.iter().chain(r).collect::<Vec<_>>(), elapsed)
+                })
+                .collect::<Vec<_>>();
 
-        // apply frames
-        world
-            .entities
-            .iter_mut()
-            .zip(frames)
-            .map(|(e, f)| e.set(f))
-            .for_each(drop); // drain to evaluate lazy iter
+            // apply frames
+            world
+                .entities
+                .iter_mut()
+                .zip(frames)
+                .map(|(e, f)| e.set(f))
+                .for_each(drop); // drain to evaluate lazy iter
+        });
 
         window.draw_2d(&event, |context, graphics, _device| {
             clear([0.1, 0.1, 0.1, 1.0], graphics);
@@ -233,8 +241,6 @@ fn main() {
                 e.render(&world, &ctx, &viewport_transform, graphics);
             }
         });
-
-        last = Instant::now();
     }
 }
 

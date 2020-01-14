@@ -19,7 +19,7 @@ pub trait PhysicsBody {
     fn mass(&self) -> f64;
     fn size(&self) -> f64;
 
-    fn tick(&self, others: Vec<&Box<dyn Entity>>, d: Duration) -> PhysicsFrame;
+    fn tick(&self, others: Vec<&Box<dyn Entity>>, dt: f64) -> PhysicsFrame;
     fn set(&mut self, f: PhysicsFrame);
 }
 
@@ -108,14 +108,19 @@ impl Planet {
         let parent = &world.entities.get(self.parent_id).unwrap();
         let vec = self.position - parent.motion().position;
         let unit_vec: Vector2<f64> = vec.normalize();
+        /*
         let wrot: Rotation2<f64> =
             Rotation2::from_matrix(&world_transform.matrix().fixed_resize(2.0));
+        */
 
         // highlights reduce with the inverse square of the distance
         //let strength = parent.size() / (f64::pi() * 4.0 * vec.norm_squared());
+        /*
         let strength_f =
             |a| 2.0 / 3.0 * ((1.0 - a / f64::pi()) * f64::cos(a) + 1.0 / f64::pi() * f64::sin(a));
         let strength = strength_f(f64::pi() / 2.0);
+        */
+        let strength = 1.0 - (vec.norm().log(10.0) / 6.0e10_f64.log(10.0));
         debug!("Strength for: {}, {}", self.name(), strength);
 
         (
@@ -154,7 +159,6 @@ impl Planet {
         colors
             .iter()
             .zip(transes.iter())
-            .into_iter()
             .map(|(color, trans)| {
                 Rectangle::new(*color).draw(
                     extents,
@@ -235,7 +239,7 @@ impl Renderable for Planet {
 }
 
 impl PhysicsBody for Planet {
-    fn tick(&self, others: Vec<&Box<dyn Entity>>, d: Duration) -> PhysicsFrame {
+    fn tick(&self, others: Vec<&Box<dyn Entity>>, dt: f64) -> PhysicsFrame {
         let mut dv: Vector2<f64> = Vector2::from([0.0; 2]);
 
         for e in others {
@@ -255,8 +259,8 @@ impl PhysicsBody for Planet {
         }
 
         PhysicsFrame {
-            velocity: self.velocity + dv * d.as_secs_f64(),
-            position: self.position + self.velocity * d.as_secs_f64(),
+            velocity: self.velocity + dv * dt,
+            position: self.position + self.velocity * dt,
         }
     }
 
@@ -301,7 +305,7 @@ impl Star {
 
 impl PhysicsBody for Star {
     // Let's pretend the star doesn't move
-    fn tick(&self, _others: Vec<&Box<dyn Entity>>, _d: Duration) -> PhysicsFrame {
+    fn tick(&self, _others: Vec<&Box<dyn Entity>>, dt: f64) -> PhysicsFrame {
         PhysicsFrame {
             velocity: Vector2::from([0.0, 0.0]),
             position: self.position,

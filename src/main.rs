@@ -1,17 +1,20 @@
 mod bodies;
 use bodies::*;
-use log::debug;
+use log::{debug, info, trace};
 use nalgebra::{Matrix3, Point2, Projective2, Vector2};
 use piston_window::*;
 use pretty_env_logger;
 use std::convert::TryInto;
+use std::fs::read_to_string;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use structopt::StructOpt;
 
 fn main() {
     pretty_env_logger::init();
 
     debug!("main - initializing window");
-    let mut window: PistonWindow = WindowSettings::new("Rusty Planets", [640, 480])
+    let mut window: PistonWindow = WindowSettings::new("Rusty Bodys", [640, 480])
         .exit_on_esc(true)
         .automatic_close(true)
         .resizable(true)
@@ -19,107 +22,17 @@ fn main() {
         .build()
         .unwrap();
 
+    let opt = Opt::from_args();
+
     debug!("main - initializing world");
-    let mut world = World { entities: vec![] };
+    let mut world = World::new_from_json(read_to_string(opt.input).expect("Error opening JSON."))
+        .expect("Failed parsing world.");
 
-    debug!("main - adding entities");
-    world.entities.push(Star::new());
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Earth",
-        height: 149.6e6,
-        mass: 5.9722e24,
-        diameter: 12742.0,
-        color: [0.2, 0.2, 1.0, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(
-        // moon
-        PlanetParams {
-            parent: &world.entities[1],
-            name: "Luna",
-            height: 0.384e6,
-            mass: 0.073e24,
-            diameter: 3475.0,
-            color: [1.0; 4],
-            id: world.entities.len(),
-        },
-    ));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Mercury",
-        height: 58_000_000.0,
-        mass: 3.285e23,
-        diameter: 4879.4,
-        color: [1.0, 0.4, 0.4, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Venus",
-        height: 108_490_000.0,
-        mass: 4.867e24,
-        diameter: 12104.0,
-        color: [1.0, 1.0, 0.1, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Mars",
-        height: 227.9e6,
-        mass: 0.642e24,
-        diameter: 6792.0,
-        color: [1.0, 0.1, 0.1, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Jupiter",
-        height: 778.6e6,
-        mass: 1898e24,
-        diameter: 142_984.0,
-        color: [1.0, 0.8, 0.0, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Saturn",
-        height: 1433.5e6,
-        mass: 568e24,
-        diameter: 120_536.0,
-        color: [1.0, 0.5, 0.0, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Neptune",
-        height: 2872.5e6,
-        mass: 86.8e24,
-        diameter: 51_118.0,
-        color: [0.45, 0.45, 0.7, 1.0],
-        id: world.entities.len(),
-    }));
-
-    world.entities.push(Planet::new_stable_orbit(PlanetParams {
-        parent: &world.entities[0],
-        name: "Uranus",
-        height: 4495.1e6,
-        mass: 102.0e24,
-        diameter: 49_528.0,
-        color: [0.4, 0.4, 0.9, 1.0],
-        id: world.entities.len(),
-    }));
     let mut sec = Instant::now();
     let mut fps = 0;
     let mut last_fps = 0;
-    let mut time_scale = window.events.get_event_settings().ups;
+    let mut time_scale = 60;
+    window.set_event_settings(window.events.get_event_settings().ups(time_scale));
 
     let mut viewport_transform = recalculate_transform(window.size().into());
     let mut pos = Point2::new(0.0, 0.0);
@@ -144,14 +57,10 @@ fn main() {
         // if panning, hook the relative mouse movements to the pan variable;
         if panning {
             event.mouse_relative(|delta| {
-                debug!(
-                    "loop - pan - old transform: {}",
-                    viewport_transform.matrix()
-                );
                 viewport_transform
                     .matrix_mut_unchecked()
                     .append_translation_mut(&Vector2::from(delta));
-                debug!(
+                trace!(
                     "loop - pan - new transform: {}",
                     viewport_transform.matrix()
                 );
@@ -165,7 +74,7 @@ fn main() {
             );
             debug!("loop - zoom - pos: {}", pos);
 
-            let zoom = if dir[1] > 0.0 { 1.5 } else { 1.0 / 1.5 };
+            let zoom = if dir[1] > 0.0 { 1.25 } else { 1.0 / 1.25 };
 
             let point_project = pos;
             let vector = Vector2::new(point_project.x, point_project.y);
@@ -185,13 +94,13 @@ fn main() {
 
         event.text(|s| {
             if s == "+" {
-                debug!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
-                time_scale *= 2;
+                info!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
+                time_scale = (time_scale as f64 * 1.5_f64) as u64;
             }
 
             if s == "-" && time_scale > 0 {
-                time_scale /= 2;
-                debug!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
+                time_scale = (time_scale as f64 / 1.5_f64) as u64;
+                info!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
             }
             window.set_event_settings(window.events.get_event_settings().ups(time_scale));
         });
@@ -238,7 +147,7 @@ fn main() {
             let ctx = context.append_transform(matrix_to_array(viewport_transform.matrix()));
 
             for e in &world.entities {
-                e.render(&world, &ctx, &viewport_transform, graphics);
+                e.render(&world, &ctx, graphics);
             }
         });
     }
@@ -268,4 +177,17 @@ fn get_window_scale(size: [f64; 2]) -> [f64; 2] {
 #[inline]
 fn get_window_ratio(size: [f64; 2]) -> f64 {
     size[0] / size[1]
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "rusty-planets", about = "Simple orbital simulator.")]
+struct Opt {
+    /// Set the base number of ticks per second. More ticks leads to a more accurate simulation.
+    // we don't want to name it "speed", need to look smart
+    #[structopt(short = "t", long = "ticks", default_value = "60")]
+    base_ticks: u64,
+
+    /// Input file
+    #[structopt(parse(from_os_str), default_value = "sol.json")]
+    input: PathBuf,
 }

@@ -1,0 +1,134 @@
+{
+  "stars": [
+	{
+	  "name": "Sun",
+	  "height": 0.0,
+	  "color": [1.0, 1.0, 0.8, 1.0],
+	  "mass": 1.989e30,
+	  "diameter": 1.391e6
+	}
+  ],
+  "planets": [
+    {
+      "name": "Mercury",
+      "height": 58e6,
+      "mass": 3.285e+23,
+      "diameter": 4879.4,
+      "color": [
+        1.0,
+        0.4,
+        0.4,
+        1.0
+      ]
+    },
+    {
+      "name": "Venus",
+      "height": 108490000.0,
+      "mass": 4.867e+24,
+      "diameter": 12104.0,
+      "color": [
+        1.0,
+        1.0,
+        0.1,
+        1.0
+      ]
+    },
+    {
+      "name": "Earth",
+      "height": 147.15e6,
+      "mass": 5.9722e+24,
+      "diameter": 12742.0,
+      "color": [
+        0.2,
+        0.2,
+        1.0,
+        1.0
+      ],
+      "children": [
+        {
+          "name": "Luna",
+          "height": 384000.0,
+          "mass": 7.3e+22,
+          "diameter": 1737.4,
+          "color": [1.0, 1.0, 1.0, 1.0]
+        }
+      ]
+    },
+    {
+      "name": "Mars",
+      "height": 227900000.0,
+      "mass": 6.42e+23,
+      "diameter": 6792.0,
+      "color": [
+        1.0,
+        0.1,
+        0.1,
+        1.0
+      ],
+	  "children": [
+        {
+          "name": "Deimos",
+          "height": 23460.0,
+          "mass": 1.4762e+15,
+          "diameter": 12.4,
+          "color": [0.6, 0.6, 0.6, 1.0]
+        },
+        {
+          "name": "Phobos",
+          "height": 6000.0,
+          "mass": 1.0659e16,
+          "diameter": 22,
+          "color": [0.6, 0.6, 0.6, 1.0]
+        }
+	  ]
+    },
+    {
+      "name": "Jupiter",
+      "height": 778600000.0,
+      "mass": 1.898e+27,
+      "diameter": 142984.0,
+      "color": [
+        1.0,
+        0.8,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "Saturn",
+      "height": 1433500000.0,
+      "mass": 5.68e+26,
+      "diameter": 120536.0,
+      "color": [
+        1.0,
+        0.5,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "Neptune",
+      "height": 2872500000.0,
+      "mass": 8.68e+25,
+      "diameter": 51118.0,
+      "color": [
+        0.45,
+        0.45,
+        0.7,
+        1.0
+      ]
+    },
+    {
+      "name": "Uranus",
+      "height": 4495100000.0,
+      "mass": 1.02e+26,
+      "diameter": 49528.0,
+      "color": [
+        0.4,
+        0.4,
+        0.9,
+        1.0
+      ]
+    }
+  ]
+}

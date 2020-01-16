@@ -10,6 +10,9 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
+const SECONDS_PER_SECOND_MAX: u64 = 60 * 60 * 24; // day
+const SECONDS_PER_SECOND_MIN: u64 = 1;
+
 fn main() {
     pretty_env_logger::init();
 
@@ -31,13 +34,16 @@ fn main() {
     let mut sec = Instant::now();
     let mut fps = 0;
     let mut last_fps = 0;
-    let mut time_scale = 60;
-    window.set_event_settings(window.events.get_event_settings().ups(time_scale));
 
     let mut viewport_transform = recalculate_transform(window.size().into());
     let mut pos = Point2::new(0.0, 0.0);
     let mut panning = false;
-    let min_step = (Duration::from_secs(1) / time_scale.try_into().unwrap()).as_secs_f64();
+
+    let mut time_scale = 60;
+    window.set_event_settings(window.events.get_event_settings().ups(time_scale));
+    let mut seconds_per_second = 1;
+    let mut min_step =
+        (Duration::from_secs(seconds_per_second) / time_scale.try_into().unwrap()).as_secs_f64();
 
     debug!("main - beginning loop");
     while let Some(event) = window.next() {
@@ -94,14 +100,35 @@ fn main() {
 
         event.text(|s| {
             if s == "+" {
-                info!("loop - time scale +1 ('{}'), now {}", s, time_scale + 1);
+                if seconds_per_second < SECONDS_PER_SECOND_MAX {
+                    seconds_per_second *= 2;
+                    if seconds_per_second > SECONDS_PER_SECOND_MAX {
+                        seconds_per_second = SECONDS_PER_SECOND_MAX;
+                    }
+                    info!("loop - seconds per second now {}", seconds_per_second);
+                } else {
+                    info!("loop - time scale *= 1.5 ('{}'), now {}", s, time_scale + 1);
+                }
                 time_scale = (time_scale as f64 * 1.5_f64) as u64;
             }
 
             if s == "-" && time_scale > 0 {
-                time_scale = (time_scale as f64 / 1.5_f64) as u64;
-                info!("loop - time scale -1 ('{}'), now {}", s, time_scale - 1);
+                if time_scale == 60 && seconds_per_second > SECONDS_PER_SECOND_MIN {
+                    {
+                        seconds_per_second /= 2;
+                        if seconds_per_second < SECONDS_PER_SECOND_MIN {
+                            seconds_per_second = SECONDS_PER_SECOND_MIN;
+                        }
+                    }
+                    info!("loop - seconds per second now {}", seconds_per_second);
+                } else {
+                    time_scale = (time_scale as f64 / 1.5_f64) as u64;
+                    info!("loop - time scale /= 1.5 ('{}'), now {}", s, time_scale - 1);
+                }
             }
+
+            min_step = (Duration::from_secs(seconds_per_second) / time_scale.try_into().unwrap())
+                .as_secs_f64();
             window.set_event_settings(window.events.get_event_settings().ups(time_scale));
         });
 

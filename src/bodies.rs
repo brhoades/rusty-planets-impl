@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, trace};
 use nalgebra::{Point2, RealField, Vector2};
 use piston_window::*;
 use rand::prelude::*;
@@ -78,24 +78,21 @@ const Y_SIZE: f64 = X_SIZE;
 
 impl Body {
     // makes a new planet that's (theoretically) stable around other at height at a period (% from 0 degrees).
-    pub fn new_stable_orbit<'a>(
-        parent_physics: &PhysicsData,
-        params: BodyParams,
-    ) -> Box<dyn Entity> {
+    pub fn new_stable_orbit(parent_physics: &PhysicsData, params: BodyParams) -> Box<dyn Entity> {
         let o_pos = parent_physics.position;
         let period: f64 = rand::thread_rng().gen_range(0.0, 2.0);
         let orbit_vec =
-            nalgebra::Rotation2::new(f64::pi() * period) * Vector2::from([params.height, 0.0]);
+            nalgebra::Rotation2::new(f64::pi() * period) * Vector2::from([params.height, 0.0]); // m to km
         let position = o_pos + orbit_vec;
 
         let mu = G * (parent_physics.mass + params.mass);
-        let f_vec = o_pos - position;
+        let f_vec = (o_pos - position) * 1000.0; // km to m
         let velocity = (mu / f_vec.norm()).sqrt()
             * (nalgebra::Rotation2::new(-f64::frac_pi_2()) * f_vec.normalize());
-        debug!("{} velocity: {}", params.name, velocity);
+        debug!("{} initial velocity: {}", params.name, velocity);
 
         // add parent velocity
-        let velocity = parent_physics.velocity + velocity;
+        let velocity = parent_physics.velocity + velocity / 1000.0; // we store position / velocity in km/s
 
         Box::new(Body {
             id: params.id,
@@ -221,7 +218,7 @@ impl PhysicsBody for Body {
     fn tick(&self, others: Vec<&Box<dyn Entity>>, dt: f64) -> PhysicsFrame {
         let mut dv: Vector2<f64> = Vector2::from([0.0; 2]);
         let this_physics_data = self.physics_data();
-        let pos = this_physics_data.position;
+        let pos = 1000.0 * this_physics_data.position;
         let id = self.id();
 
         for e in others {
@@ -230,7 +227,7 @@ impl PhysicsBody for Body {
             }
 
             let physics = e.physics_data();
-            let o_pos = physics.position;
+            let o_pos = 1000.0 * physics.position;
             let mass = physics.mass + this_physics_data.mass;
 
             let vec = o_pos - pos;
@@ -240,7 +237,7 @@ impl PhysicsBody for Body {
         }
 
         PhysicsFrame {
-            velocity: self.velocity + dv * dt,
+            velocity: self.velocity + dv / 1000.0 * dt,
             position: self.position + self.velocity * dt,
         }
     }
@@ -309,13 +306,18 @@ impl Renderable for Star {
     fn render(&self, _world: &World, context: &Context, graphics: &mut G2d) {
         let scale = context.transform[0][0] * 1e3; // this transform differs from nalgebra by 1e3
 
-        let extents = if scale > 100_000.0 / 5_000_000_000.0 {
-            ellipse::circle(self.position[0], self.position[1], self.size)
+        if is_visible(self.size, context.transform[0][0]) {
+            let extents = ellipse::circle(self.position[0], self.position[1], self.size); // statically sized placeholder;
+            Ellipse::new(self.color).draw(
+                extents,
+                &context.draw_state,
+                context.transform,
+                graphics,
+            );
         } else {
-            ellipse::circle(self.position[0], self.position[1], 25.0 / scale) // statically sized placeholder
+            let extents = ellipse::circle(self.position[0], self.position[1], 25.0 / scale); // statically sized placeholder;
+            rectangle(self.color, extents, context.transform, graphics);
         };
-
-        rectangle(self.color, extents, context.transform, graphics);
     }
 }
 
@@ -379,11 +381,11 @@ impl World {
 #[inline]
 fn is_visible(absolute_size: f64, zoom: f64) -> bool {
     // at 1.0 / 50_000.0 zoom, 7k is roughly 1 pixel
-    debug!(
+    trace!(
         "absolute_size: {}, zoom: {}, together: {}",
         absolute_size,
         zoom,
         absolute_size * zoom
     );
-    absolute_size * zoom > 0.001
+    absolute_size * zoom > 0.0025
 }

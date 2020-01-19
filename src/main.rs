@@ -39,7 +39,7 @@ fn main() {
 	let mut pos = Point2::new(0.0, 0.0);
 	let mut panning = false;
 
-	let mut time_scale = 60;
+	let mut time_scale = opt.base_ticks;
 	window.set_event_settings(window.events.get_event_settings().ups(time_scale));
 	let mut seconds_per_second = 1;
 

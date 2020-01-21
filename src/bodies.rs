@@ -9,7 +9,7 @@ use std::convert::TryInto;
 pub trait PhysicsBody {
 	fn physics_data(&self) -> PhysicsData;
 
-	fn tick(&self, others: Vec<&Box<dyn Entity>>, dt: f64) -> PhysicsFrame;
+	fn tick(&self, left: &[Box<dyn Entity>], right: &[Box<dyn Entity>], dt: f64) -> PhysicsFrame;
 	fn set(&mut self, f: PhysicsFrame);
 }
 
@@ -203,16 +203,11 @@ impl Renderable<World> for Body {
 }
 
 impl PhysicsBody for Body {
-	fn tick(&self, others: Vec<&Box<dyn Entity>>, dt: f64) -> PhysicsFrame {
+	fn tick(&self, left: &[Box<dyn Entity>], right: &[Box<dyn Entity>], dt: f64) -> PhysicsFrame {
 		let mut dv: Vector2<f64> = Vector2::from([0.0; 2]);
 		let pos = self.position;
-		let id = self.id();
 
-		for e in others {
-			if e.id() == id {
-				continue;
-			}
-
+		for e in left.into_iter().chain(right) {
 			let physics = e.physics_data();
 			let o_pos = physics.position;
 			let mass = physics.mass + self.mass;
@@ -271,7 +266,12 @@ impl Star {
 
 impl PhysicsBody for Star {
 	// Let's pretend the star doesn't move
-	fn tick(&self, _others: Vec<&Box<dyn Entity>>, _dt: f64) -> PhysicsFrame {
+	fn tick(
+		&self,
+		_left: &[Box<dyn Entity>],
+		_right: &[Box<dyn Entity>],
+		_dt: f64,
+	) -> PhysicsFrame {
 		PhysicsFrame {
 			velocity: Vector2::from([0.0, 0.0]),
 			position: self.position,
@@ -359,7 +359,7 @@ impl World {
 						c.parent_id = parent_id.clone();
 						Body::new_stable_orbit(&parent_motion, c)
 					})
-					.chain(vec![this].into_iter())
+					.chain(vec![this])
 			})
 			.collect::<Vec<_>>();
 

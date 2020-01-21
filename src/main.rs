@@ -101,31 +101,27 @@ fn main() {
 
 		event.text(|s| {
 			if s == "+" {
-				if seconds_per_second < SECONDS_PER_SECOND_MAX {
-					seconds_per_second *= 2;
-					if seconds_per_second > SECONDS_PER_SECOND_MAX {
-						seconds_per_second = SECONDS_PER_SECOND_MAX;
-					}
-					info!("loop - seconds per second now {}", seconds_per_second);
-				} else {
-					time_scale = (time_scale as f64 * 1.5_f64) as u64;
-					info!("loop - time scale *= 1.5 ('{}'), now {}", s, time_scale + 1);
-				}
+				seconds_per_second *= 2;
+				info!("loop - seconds per second now {}", seconds_per_second);
 			}
 
-			if s == "-" && time_scale > 0 {
-				if time_scale == 60 && seconds_per_second > SECONDS_PER_SECOND_MIN {
-					{
-						seconds_per_second /= 2;
-						if seconds_per_second < SECONDS_PER_SECOND_MIN {
-							seconds_per_second = SECONDS_PER_SECOND_MIN;
-						}
-					}
-					info!("loop - seconds per second now {}", seconds_per_second);
-				} else {
-					time_scale = (time_scale as f64 / 1.5_f64) as u64;
-					info!("loop - time scale /= 1.5 ('{}'), now {}", s, time_scale - 1);
+			if s == "]" {
+				time_scale = (time_scale as f64 * 1.5_f64) as u64;
+				info!("loop - time scale *= 1.5 ('{}')", time_scale);
+			}
+
+			if s == "[" && time_scale > 0 {
+				time_scale = (time_scale as f64 / 1.5_f64) as u64;
+				info!("loop - time scale /= 1.5 ('{}'), now {}", s, time_scale - 1);
+			}
+
+			if s == "-" {
+				seconds_per_second /= 2;
+
+				if seconds_per_second < SECONDS_PER_SECOND_MIN {
+					seconds_per_second = SECONDS_PER_SECOND_MIN;
 				}
+				info!("loop - seconds per second now {}", seconds_per_second);
 			}
 
 			window.set_event_settings(window.events.get_event_settings().ups(time_scale));
@@ -136,23 +132,14 @@ fn main() {
 
 		event.update(|args| {
 			let elapsed = seconds_per_second as f64 * args.dt;
-			/*
-			let elapsed = if args.dt < min_step {
-				min_step
-			} else {
-				args.dt
-			};
-			*/
 
 			// In-order physics state of next frame
+			// Must collect to avoid double borrow of world.
 			let frames = world
 				.entities
 				.iter()
 				.enumerate()
-				.map(|(i, e)| {
-					let (l, r) = world.entities.split_at(i);
-					e.tick(l.iter().chain(r).collect::<Vec<_>>(), elapsed)
-				})
+				.map(|(i, e)| e.tick(&world.entities[..i], &world.entities[i + 1..], elapsed))
 				.collect::<Vec<_>>();
 
 			// apply frames
@@ -169,16 +156,6 @@ fn main() {
 		window.draw_2d(&event, |context, graphics, device| {
 			clear([0.1, 0.1, 0.1, 1.0], graphics);
 			graphics.clear_stencil(0);
-
-			/*
-			if sec.elapsed().as_secs_f32() < 1.0 {
-				fps += 1;
-			} else {
-				last_fps = fps;
-				sec = Instant::now();
-				fps = 0;
-			}
-			*/
 
 			let ctx = context.append_transform(matrix_to_array(viewport_transform.matrix()));
 

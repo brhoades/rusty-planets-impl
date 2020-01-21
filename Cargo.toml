@@ -25,7 +25,3 @@ find_folder = "0.3.0"
 [dependencies.piston2d-graphics]
 version = "*"
 features = ["glyph_cache_rusttype"]
-
-[[bench]]
-name = "bench"
-harness = false

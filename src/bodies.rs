@@ -80,7 +80,7 @@ impl Body {
 		let o_pos = parent_physics.position;
 		let period: f64 = rand::thread_rng().gen_range(0.0, 2.0);
 		let orbit_vec = nalgebra::Rotation2::new(f64::pi() * period)
-			* Vector2::from([params.height * 1_000.0, 0.0]); // m to km
+			* Vector2::from([parent_physics.size / 2.0 + params.height * 1_000.0, 0.0]); // m to km
 		let position = o_pos + orbit_vec;
 
 		let mu = G * (parent_physics.mass + params.mass);

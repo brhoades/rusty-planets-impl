@@ -120,11 +120,11 @@ impl Body {
 			(self.color, transform),
 			(
 				[1.0, 1.0, 1.0, flux as f32],
-				transform.scale(3.0, 3.0).trans_pos(-size * unit_vec),
+				transform.scale(1.0, 1.0).trans_pos(-0.4 * size * unit_vec),
 			),
 			(
 				[0.0, 0.0, 0.0, flux as f32],
-				transform.scale(3.0, 3.0).trans_pos(size * unit_vec),
+				transform.scale(1.0, 1.0).trans_pos(0.4 * size * unit_vec),
 			),
 		]
 	}
@@ -171,7 +171,7 @@ impl Body {
 		self.get_offsets(world, transform, size)
 			.iter()
 			.map(|(color, trans)| {
-				Rectangle::new(*color).draw(extents, &DrawState::new_inside(), *trans, graphics)
+				Ellipse::new(*color).draw(extents, &DrawState::new_inside(), *trans, graphics)
 			})
 			.for_each(drop);
 	}
